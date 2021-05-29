@@ -1,4 +1,4 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,45 +21,62 @@ cfg = ed({
     'optimizer': 'Momentum',
     })
 
-# config for cifar10
 config1 = ed({
-    "class_num": 10,
-    "batch_size": 32,
+    "class_num": 1000,
+    "batch_size": 256,
     "loss_scale": 1024,
     "momentum": 0.9,
     "weight_decay": 1e-4,
-    "epoch_size": 90,
+    "epoch_size": 150,
     "pretrain_epoch_size": 0,
     "save_checkpoint": True,
-    "save_checkpoint_epochs": 1,
-    "keep_checkpoint_max": 10,
-    "save_checkpoint_path": "./",
-    "warmup_epochs": 5,
-    "lr_decay_mode": "poly",
-    "lr_init": 0.01,
-    "lr_end": 0.00001,
-    "lr_max": 0.1
-})
-
-# config for imagenet2012
-config2 = ed({
-    "class_num": 1001,
-    "batch_size": 128,
-    "loss_scale": 1024,
-    "momentum": 0.9,
-    "weight_decay": 1e-4,
-    "epoch_size": 100,
-    "pretrain_epoch_size": 0,
-    "save_checkpoint": True,
-    "save_checkpoint_epochs": 4,
-    "keep_checkpoint_max": 50,
+    "save_checkpoint_epochs": 5,
+    "keep_checkpoint_max": 5,
+    "decay_mode": "linear",
     "save_checkpoint_path": "./checkpoints",
-    "warmup_epochs": 0,
-    "lr_decay_mode": "linear",
+    "hold_epochs": 0,
     "use_label_smooth": True,
     "label_smooth_factor": 0.1,
-    "lr_init": 0,
-    "lr_max": 0.8,
+    "lr_init": 0.8,
     "lr_end": 0.0
 })
 
+config2 = ed({
+    "class_num": 1000,
+    "batch_size": 256,
+    "loss_scale": 1024,
+    "momentum": 0.9,
+    "weight_decay": 1e-4,
+    "epoch_size": 150,
+    "pretrain_epoch_size": 0,
+    "save_checkpoint": True,
+    "save_checkpoint_epochs": 5,
+    "keep_checkpoint_max": 5,
+    "decay_mode": "linear",
+    "save_checkpoint_path": "./checkpoints",
+    "hold_epochs": 0,
+    "use_label_smooth": True,
+    "label_smooth_factor": 0.1,
+    "lr_init": 0.8,
+    "lr_end": 0.0
+})
+
+config3 = ed({
+    "class_num": 1000,
+    "batch_size": 256,
+    "loss_scale": 1024,
+    "momentum": 0.9,
+    "weight_decay": 1e-4,
+    "epoch_size": 220,
+    "pretrain_epoch_size": 0,
+    "save_checkpoint": True,
+    "save_checkpoint_epochs": 5,
+    "keep_checkpoint_max": 5,
+    "decay_mode": "cosine",
+    "save_checkpoint_path": "./checkpoints",
+    "hold_epochs": 0,
+    "use_label_smooth": True,
+    "label_smooth_factor": 0.1,
+    "lr_init": 0.8,
+    "lr_end": 0.0
+})

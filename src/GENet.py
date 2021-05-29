@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ============================================================================
-"""ResNet."""
-from src.GEBlock import GEBlock
+"""GENet."""
+
 import math
 import numpy as np
 import mindspore.nn as nn
-import mindspore.common.dtype as mstype
 from mindspore.ops import operations as P
-from mindspore.ops import functional as F
 from mindspore.common.tensor import Tensor
-from scipy.stats import truncnorm
-
-
-
+from src.GEBlock import GEBlock
 
 def calculate_gain(nonlinearity, param=None):
     """calculate_gain"""
-    linear_fns = ['linear', 'conv1d', 'conv2d', 'conv3d', 'conv_transpose1d', 'conv_transpose2d', 'conv_transpose3d']
+    linear_fns = ['linear', 'conv1d', 'conv2d', 'conv3d', 'conv_transpose1d',
+                  'conv_transpose2d', 'conv_transpose3d']
     res = 0
     if nonlinearity in linear_fns or nonlinearity == 'sigmoid':
         res = 1
@@ -51,10 +47,13 @@ def calculate_gain(nonlinearity, param=None):
 
 
 def _calculate_fan_in_and_fan_out(tensor):
-    """_calculate_fan_in_and_fan_out"""
+    """
+    _calculate_fan_in_and_fan_out
+    """
     dimensions = len(tensor)
     if dimensions < 2:
-        raise ValueError("Fan in and fan out can not be computed for tensor with fewer than 2 dimensions")
+        raise ValueError("Fan in and fan out can not be computed for tensor"
+                         " with fewer than 2 dimensions")
     if dimensions == 2:  # Linear
         fan_in = tensor[1]
         fan_out = tensor[0]
@@ -70,6 +69,9 @@ def _calculate_fan_in_and_fan_out(tensor):
 
 
 def _calculate_correct_fan(tensor, mode):
+    """
+        for pylint.
+    """
     mode = mode.lower()
     valid_modes = ['fan_in', 'fan_out']
     if mode not in valid_modes:
@@ -79,6 +81,9 @@ def _calculate_correct_fan(tensor, mode):
 
 
 def kaiming_normal(inputs_shape, a=0, mode='fan_in', nonlinearity='leaky_relu'):
+    """
+        for pylint.
+    """
     fan = _calculate_correct_fan(inputs_shape, mode)
     gain = calculate_gain(nonlinearity, a)
     std = gain / math.sqrt(fan)
@@ -86,6 +91,9 @@ def kaiming_normal(inputs_shape, a=0, mode='fan_in', nonlinearity='leaky_relu'):
 
 
 def kaiming_uniform(inputs_shape, a=0., mode='fan_in', nonlinearity='leaky_relu'):
+    """
+        for pylint.
+    """
     fan = _calculate_correct_fan(inputs_shape, mode)
     gain = calculate_gain(nonlinearity, a)
     std = gain / math.sqrt(fan)
@@ -137,7 +145,7 @@ def _fc(in_channel, out_channel):
 
 class GENet(nn.Cell):
     """
-    ResNet architecture.
+    GENet architecture.
 
     Args:
         block (Cell): Block for network.
@@ -145,10 +153,10 @@ class GENet(nn.Cell):
         in_channels (list): Input channel in each layer.
         out_channels (list): Output channel in each layer.
         strides (list):  Stride size in each layer.
+        spatial(list):   Numbers of output spatial size of different groups.
         num_classes (int): The number of classes that the training images are belonging to.
-        use_se (bool): Enable SE-ResNet50 net. Default: False.
-        se_block(bool): Use se block in SE-ResNet50 net in layer 3 and layer 4. Default: False.
-        res_base (bool): Enable parameter setting of resnet18. Default: False.
+        extra_params(bool)    : Whether to use DW Conv to down-sample
+        mlp(bool)      : Whether to combine SENet (using 1*1 conv)
 
     Returns:
         Tensor, output tensor.
@@ -160,7 +168,7 @@ class GENet(nn.Cell):
         >>>        [256, 512, 1024, 2048],
         >>>        [1, 2, 2, 2],
         >>>        [56,28,14,7]
-        >>>        1001)
+        >>>        1001,True,True)
     """
 
     def __init__(self,
@@ -171,47 +179,46 @@ class GENet(nn.Cell):
                  strides,
                  spatial,
                  num_classes,
-                 extra_params = False,
-                 mlp = True):
+                 extra_params,
+                 mlp):
         super(GENet, self).__init__()
 
         if not len(layer_nums) == len(in_channels) == len(out_channels) == 4:
             raise ValueError("the length of layer_num, in_channels, out_channels list must be 4!")
         self.extra = extra_params
-        self.mlp = mlp
 
-
+        # initial stage
         self.conv1 = _conv7x7(3, 64, stride=2)
         self.bn1 = _bn(64)
         self.relu = P.ReLU()
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, pad_mode="same")
 
-        self.layer1 = self._make_layer(block,
-                                       layer_nums[0],
+        self.layer1 = self._make_layer(block=block,
+                                       layer_num=layer_nums[0],
                                        in_channel=in_channels[0],
                                        out_channel=out_channels[0],
                                        stride=strides[0],
                                        spatial=spatial[0],
                                        extra_params=extra_params,
-                                       mlp = mlp)
-        self.layer2 = self._make_layer(block,
-                                       layer_nums[1],
+                                       mlp=mlp)
+        self.layer2 = self._make_layer(block=block,
+                                       layer_num=layer_nums[1],
                                        in_channel=in_channels[1],
                                        out_channel=out_channels[1],
                                        stride=strides[1],
                                        spatial=spatial[1],
                                        extra_params=extra_params,
                                        mlp=mlp)
-        self.layer3 = self._make_layer(block,
-                                       layer_nums[2],
+        self.layer3 = self._make_layer(block=block,
+                                       layer_num=layer_nums[2],
                                        in_channel=in_channels[2],
                                        out_channel=out_channels[2],
                                        stride=strides[2],
                                        spatial=spatial[2],
                                        extra_params=extra_params,
                                        mlp=mlp)
-        self.layer4 = self._make_layer(block,
-                                       layer_nums[3],
+        self.layer4 = self._make_layer(block=block,
+                                       layer_num=layer_nums[3],
                                        in_channel=in_channels[3],
                                        out_channel=out_channels[3],
                                        stride=strides[3],
@@ -223,39 +230,55 @@ class GENet(nn.Cell):
         self.flatten = nn.Flatten()
         self.end_point = _fc(out_channels[3], num_classes)
 
-    def _make_layer(self, block, layer_num, in_channel, out_channel, stride, spatial, extra_params,mlp):
+    def _make_layer(self, block, layer_num, in_channel, out_channel,
+                    stride, spatial, extra_params, mlp):
         """
-        Make stage network of ResNet.
+        Make stage network of GENet.
 
         Args:
-            block (Cell): Resnet block.
+            block (Cell): GENet block.
             layer_num (int): Layer number.
             in_channel (int): Input channel.
             out_channel (int): Output channel.
             stride (int): Stride size for the first convolutional layer.
+            spatial(int):   output spatial size of every block in same group.
+            extra_params(bool)    : Whether to use DW Conv to down-sample
+            mlp(bool)      : Whether to combine SENet (using 1*1 conv)
         Returns:
             SequentialCell, the output layer.
 
-        Examples:
-            >>> _make_layer(GEBlock, 3, 128, 256, 2)
         """
         layers = []
 
-        resnet_block = block(in_channel, out_channel, stride=stride,spatial=spatial,extra_params=extra_params,mlp=mlp)
-        layers.append(resnet_block)
+        ge_block = block(in_channel=in_channel,
+                         out_channel=out_channel,
+                         stride=stride,
+                         spatial=spatial,
+                         extra_params=extra_params,
+                         mlp=mlp)
+        layers.append(ge_block)
         for _ in range(1, layer_num):
-            resnet_block = block(out_channel, out_channel, stride=1,extra_params=extra_params,mlp=mlp)
-            layers.append(resnet_block)
+            ge_block = block(in_channel=out_channel,
+                             out_channel=out_channel,
+                             stride=1,
+                             spatial=spatial,
+                             extra_params=extra_params,
+                             mlp=mlp)
+            layers.append(ge_block)
         return nn.SequentialCell(layers)
 
     def construct(self, x):
-
+        """
+        Args:
+            x : input Tensor.
+        """
+        # initial stage
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
-
         c1 = self.maxpool(x)
 
+        # four groups
         c2 = self.layer1(c1)
         c3 = self.layer2(c2)
         c4 = self.layer3(c3)
@@ -267,26 +290,28 @@ class GENet(nn.Cell):
 
         return out
 
-def GE_resnet50(class_num=1001,extra=False,mlp=True):
+def GE_resnet50(class_num=1000, extra=True, mlp=True):
     """
-    Get SE-ResNet50 neural network.
+    Get GE-ResNet50 neural network.
+    Default : GE Theta+ version (best)
 
     Args:
         class_num (int): Class number.
-
+        extra(bool)    : Whether to use DW Conv to down-sample
+        mlp(bool)      : Whether to combine SENet (using 1*1 conv)
     Returns:
         Cell, cell instance of GENet-ResNet50 neural network.
 
     Examples:
-        >>> net = GE_resnet50(1001)
+        >>> net = GE_resnet50(1000)
     """
-    return GENet(GEBlock,
-                 [3, 4, 6, 3],
-                 [64, 256, 512, 1024],
-                 [256, 512, 1024, 2048],
-                 [1, 2, 2, 2],
-                 [56,28,14,7],
-                 class_num,
-                 extra,
-                 mlp
-                 )
+
+    return GENet(block=GEBlock,
+                 layer_nums=[3, 4, 6, 3],
+                 in_channels=[64, 256, 512, 1024],
+                 out_channels=[256, 512, 1024, 2048],
+                 strides=[1, 2, 2, 2],
+                 spatial=[56, 28, 14, 7],
+                 num_classes=class_num,
+                 extra_params=extra,
+                 mlp=mlp)
