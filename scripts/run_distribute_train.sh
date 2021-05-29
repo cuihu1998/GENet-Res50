@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2020-2021 Huawei Technologies Co., Ltd
+# Copyright 2021 Huawei Technologies Co., Ltd
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +14,10 @@
 # limitations under the License.
 # ============================================================================
 
-if [ $# != 3 ] && [ $# != 4 ]
+if [ $# != 4 ] && [ $# != 5 ]
 then
-  echo "Usage: bash run_distribute_train.sh  [cifar10|imagenet2012] [RANK_TABLE_FILE] [DATASET_PATH] [PRETRAINED_CKPT_PATH](optional)"
+  echo "Usage: bash run_distribute_train.sh [RANK_TABLE_FILE] [DATASET_PATH] [MLP] [EXTRA] [PRETRAINED_CKPT_PATH](optional)"
   exit 1
-fi
-
-
-if [ $1 != "cifar10" ] && [ $1 != "imagenet2012" ]
-then 
-    echo "error: the selected dataset is neither cifar10 nor imagenet2012"
-exit 1
 fi
 
 get_real_path(){
@@ -35,12 +28,12 @@ get_real_path(){
   fi
 }
 
-PATH1=$(get_real_path $2)
-PATH2=$(get_real_path $3)
+PATH1=$(get_real_path $1)
+PATH2=$(get_real_path $2)
 
-if [ $# == 4 ]
+if [ $# == 5 ]
 then 
-    PATH3=$(get_real_path $4)
+    PATH3=$(get_real_path $5)
 fi
 
 if [ ! -f $PATH1 ]
@@ -55,22 +48,18 @@ then
 exit 1
 fi 
 
-if [ $# == 4 ] && [ ! -f $PATH3 ]
+if [ $# == 5 ] && [ ! -f $PATH3 ]
 then
     echo "error: PRETRAINED_CKPT_PATH=$PATH3 is not a file"
 exit 1
 fi
-
+export SERVER_ID=0
 ulimit -u unlimited
 export DEVICE_NUM=8
 export RANK_SIZE=8
-
-export SERVER_ID=0
 rank_start=$((DEVICE_NUM * SERVER_ID))
-
 first_device=0
 export RANK_TABLE_FILE=$PATH1
-
 
 for((i=0; i<${DEVICE_NUM}; i++))
 do
@@ -84,14 +73,14 @@ do
     cd ./train_parallel$i || exit
     echo "start training for rank $RANK_ID, device $DEVICE_ID"
     env > env.log
-    if [ $# == 3 ]
+    if [ $# == 4 ]
     then    
-        python train.py --dataset=$1 --run_distribute=True --device_num=$DEVICE_NUM --dataset_path=$PATH2 &> log &
+        python train.py --data_url=$PATH2 --mlp=$3 --extra=$4 &> log &
     fi
     
-    if [ $# == 4 ]
+    if [ $# == 5 ]
     then
-        python train.py --dataset=$1 --run_distribute=True --device_num=$DEVICE_NUM --dataset_path=$PATH2 --pre_trained=$PATH3 &> log &
+        python train.py --data_url=$PATH2 --mlp=$3 --extra=$4 --pre_trained=$PATH3 &> log &
     fi
 
     cd ..

@@ -14,10 +14,10 @@
 # limitations under the License.
 # ============================================================================
 
-if [ $# != 5 ]
-then 
-    echo "Usage: bash run_eval.sh [DATASET_PATH] [CHECKPOINT_PATH] [MLP] [EXTRA] [DEVICE_ID]"
-exit 1
+if [ $# != 5 ] && [ $# != 4 ]
+then
+  echo "Usage: bash run_train.sh [DATASET_PATH] [MLP] [EXTRA] [DEVICE_ID] [PRETRAINED_CKPT_PATH](optional)"
+  exit 1
 fi
 
 get_real_path(){
@@ -29,38 +29,46 @@ get_real_path(){
 }
 
 PATH1=$(get_real_path $1)
-PATH2=$(get_real_path $2)
 
+if [ $# == 5 ]
+then
+    PATH2=$(get_real_path $5)
+fi
 
 if [ ! -d $PATH1 ]
-then 
+then
     echo "error: DATASET_PATH=$PATH1 is not a directory"
 exit 1
-fi 
+fi
 
-if [ ! -f $PATH2 ]
-then 
-    echo "error: CHECKPOINT_PATH=$PATH2 is not a file"
+if [ $# == 5 ] && [ ! -f $PATH2 ]
+then
+    echo "error: CHECKPOINT_FILE=$PATH2 is not a file"
 exit 1
-fi 
-
+fi
 ulimit -u unlimited
+
 export DEVICE_NUM=1
-export DEVICE_ID=$5
 export RANK_SIZE=1
+export DEVICE_ID=$4
 export RANK_ID=0
 
-if [ -d "eval" ];
-then
-    rm -rf ./eval
-fi
-mkdir ./eval
-cp ../*.py ./eval
-cp *.sh ./eval
-cp -r ../src ./eval
-cd ./eval || exit
+rm -rf ./train_standalone
+mkdir ./train_standalone
+cp ../*.py ./train_standalone
+cp *.sh ./train_standalone
+cp -r ../src ./train_standalone
+cd ./train_standalone || exit
+echo "start training for rank $RANK_ID, device $DEVICE_ID"
 env > env.log
-echo "start evaluation for device $DEVICE_ID"
-python eval.py --data_url=$PATH1 --checkpoint_path=$PATH2 --mlp=$3 --extra=$4 &> log &
+if [ $# == 4 ]
+then
+    python train.py --data_url=$PATH1 --mlp=$2 --extra=$3 &> log &
+fi
+
+if [ $# == 5 ]
+then
+    python train.py --data_url=$PATH1 --mlp=$2 --extra=$3 --pre_trained=$PATH2 &> log &
+fi
 
 cd ..
