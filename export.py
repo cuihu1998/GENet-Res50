@@ -28,6 +28,7 @@ parser.add_argument('--pre_trained', type=str, default=None, help='Pretrained ch
 parser.add_argument('--extra', type=str, default="True",
                     help='whether to use Depth-wise conv to down sample')
 parser.add_argument('--mlp', type=str, default="True", help='bottleneck . whether to use 1*1 conv')
+parser.add_argument('--format_type', type=str, default="MINDIR", help='')
 args_opt = parser.parse_args()
 
 def trans_char_to_bool(str_):
@@ -59,6 +60,6 @@ if __name__ == '__main__':
             raise ValueError("Load param into network fail!")
     # export network
     print("============== Starting export ==============")
-    inputs = Tensor(np.ones([1, 3, 224, 224]))
-    export(network, inputs, file_name="GENet_Res50")
+    inputs = Tensor(np.ones([1, 3, 224, 224], dtype=np.float32))
+    export(network, inputs, file_format=args_opt.format_type, file_name="GENet_Res50")
     print("============== End export ==============")
